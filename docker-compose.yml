@@ -1,8 +1,61 @@
 version: '3'
 services:
+  movies-front:
+    container_name: movies_front_container
+    build: 
+      context: ./movies-front
+    command: npm start
+    volumes:
+      - ./movies-front:/usr/app
+      - /usr/app/node_modules
+    depends_on:
+      - movies-api
+    environment:
+      - PORT=${REACT_PORT}
+    expose:
+      - ${REACT_PORT}
+    ports:
+      - ${REACT_PORT}:${REACT_PORT}
+   
+  movies-api:
+    container_name: movies_api_container
+    build: 
+      context: ./movies-api
+    image: movies_api
+    command: "/movies-api -b ${BIND_IP} -p ${BIND_PORT}"
+    environment:
+      - BIND_IP
+      - BIND_PORT
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_PORT
+      - POSTGRES_SERVER
+    expose:
+      - ${BIND_PORT}
+    ports:
+      - ${BIND_PORT}:${BIND_PORT}
+    depends_on:
+      - postgres
+    restart: always
+
+  postgres:
+    image: postgres:15.3
+    restart: always
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_PORT
+    expose:
+      - ${POSTGRES_PORT}
+    ports:
+      - ${POSTGRES_SERVER}:${POSTGRES_PORT}:${POSTGRES_PORT}
+
   flyway:
     image: flyway/flyway:latest
     container_name: migration_flyway
+    network_mode: "host"
     environment:
       - FLYWAY_USER=${POSTGRES_USER}
       - FLYWAY_PASSWORD=${POSTGRES_PASSWORD}
@@ -11,3 +64,5 @@ services:
     command: -locations=filesystem:/flyway/sql -connectRetries=60 migrate
     volumes:
       - ./sql_migrations:/flyway/sql
+    depends_on:
+      - postgres
